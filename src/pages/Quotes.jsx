@@ -31,11 +31,11 @@ export default function Quotes() {
     return getQuoteById(id);
   }, [id]);
 
+  const isEditMode = Boolean(existingQuote);
+
   const recentQuotes = useMemo(() => {
     return getQuotes().slice(0, 5);
   }, [id]);
-
-  const isEditMode = Boolean(existingQuote);
 
   const [quoteTitle, setQuoteTitle] = useState("");
   const [quoteNumber, setQuoteNumber] = useState("001");
