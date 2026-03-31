@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import { getQuotes, deleteQuote as removeQuote, updateQuote } from "../lib/quotes";
@@ -6,6 +6,7 @@ import { saveWonQuoteAsJob } from "../lib/jobs";
 
 export default function SavedQuotes() {
   const [quotes, setQuotes] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,23 +51,64 @@ export default function SavedQuotes() {
     navigate(`/truinvoice/create/${quote.id}`);
   };
 
+  const filteredQuotes = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    if (!term) return quotes;
+
+    return quotes.filter((quote) => {
+      const quoteNumber = String(quote.quoteNumber || "").toLowerCase();
+      const quoteTitle = String(quote.quoteTitle || "").toLowerCase();
+      const customerName = String(quote.customerName || "").toLowerCase();
+      const status = String(quote.status || "draft").toLowerCase();
+
+      return (
+        quoteNumber.includes(term) ||
+        quoteTitle.includes(term) ||
+        customerName.includes(term) ||
+        status.includes(term)
+      );
+    });
+  }, [quotes, searchTerm]);
+
   return (
     <AppShell>
       <div className="mx-auto max-w-5xl px-4 py-6 md:px-8">
-        <h1 className="text-2xl font-bold tracking-tight">
-          Saved <span className="text-amber-500">Quotes</span>
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          View, open and manage saved quotes.
-        </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Saved <span className="text-amber-500">Quotes</span>
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              View, open and manage saved quotes.
+            </p>
+          </div>
+
+          <div className="w-full md:max-w-sm">
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Search quotes
+            </label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search quote no, title, customer..."
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none"
+            />
+          </div>
+        </div>
 
         {quotes.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm text-slate-500">No quotes yet.</p>
           </div>
+        ) : filteredQuotes.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-sm text-slate-500">No quotes match your search.</p>
+          </div>
         ) : (
           <div className="mt-6 space-y-4">
-            {quotes.map((quote) => (
+            {filteredQuotes.map((quote) => (
               <div
                 key={quote.id}
                 className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
