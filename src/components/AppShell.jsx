@@ -5,6 +5,7 @@ import {
   BarChart3,
   FileText,
   Receipt,
+  PoundSterling,
 } from "lucide-react";
 
 export default function AppShell({ children }) {
@@ -186,7 +187,7 @@ export default function AppShell({ children }) {
           {mobileNavItem("/trurate/history", "History", History)}
           {mobileNavItem("/trurate/insights", "Insights", BarChart3)}
           {mobileNavItem("/truquote", "Quotes", FileText)}
-          {mobileNavItem("/truinvoice", "Invoices", Receipt)}
+          {mobileNavItem("/truinvoice", "Invoices", PoundSterling)}
         </div>
       </nav>
     </div>
