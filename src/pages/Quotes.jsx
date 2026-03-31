@@ -31,6 +31,10 @@ export default function Quotes() {
     return getQuoteById(id);
   }, [id]);
 
+  const recentQuotes = useMemo(() => {
+    return getQuotes().slice(0, 5);
+  }, [id]);
+
   const isEditMode = Boolean(existingQuote);
 
   const [quoteTitle, setQuoteTitle] = useState("");
@@ -45,10 +49,6 @@ export default function Quotes() {
   const [terms, setTerms] = useState("Payment due within 7 days of acceptance.");
   const [items, setItems] = useState([createEmptyItem()]);
   const [message, setMessage] = useState("");
-
-  const recentQuotes = useMemo(() => {
-    return getQuotes().slice(0, 5);
-  }, [id]);
 
   useEffect(() => {
     if (!existingQuote) return;
@@ -231,7 +231,7 @@ export default function Quotes() {
               <div>
                 <h2 className="text-base font-semibold text-slate-900">Recent Quotes</h2>
                 <p className="mt-1 text-xs text-slate-500">
-                  Your latest saved quotes for quick access
+                  Your latest 5 saved quotes
                 </p>
               </div>
 

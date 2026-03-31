@@ -1,195 +1,504 @@
-import { Link, useLocation } from "react-router-dom";
-import {
-  Calculator,
-  History,
-  BarChart3,
-  FileText,
-  Receipt,
-  PoundSterling,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { PoundSterling, FileText, ChevronRight } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import AppShell from "../components/AppShell";
+import { getQuoteById, getQuotes, saveQuote, updateQuote } from "../lib/quotes";
 
-export default function AppShell({ children }) {
-  const location = useLocation();
-
-  const isActive = (path) => {
-    if (path === "/truquote") {
-      return location.pathname.startsWith("/truquote");
-    }
-
-    if (path === "/truinvoice") {
-      return location.pathname.startsWith("/truinvoice");
-    }
-
-    return location.pathname.startsWith(path);
+function createEmptyItem() {
+  return {
+    description: "",
+    quantity: 1,
+    unitPrice: "",
   };
+}
 
-  const getDesktopLinkStyle = (path) => ({
-    display: "block",
-    padding: "12px 14px",
-    borderRadius: "14px",
-    fontSize: "18px",
-    fontWeight: 600,
-    color: isActive(path) ? "#b45309" : "#334155",
-    backgroundColor: isActive(path) ? "#fef3c7" : "transparent",
-    textDecoration: "none",
-    transition: "all 0.2s ease",
-  });
+function isValidEmail(email) {
+  if (!email.trim()) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
 
-  const sectionLabelStyle = {
-    margin: "0 0 10px 0",
-    fontSize: "13px",
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.04em",
-    color: "#94a3b8",
-  };
+function isValidPhone(phone) {
+  if (!phone.trim()) return true;
+  return /^[\d\s+()-]{7,20}$/.test(phone.trim());
+}
 
-  const mobileNavItem = (path, label, Icon) => {
-    const active = isActive(path);
+export default function Quotes() {
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-    return (
-      <Link
-        to={path}
-        className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 py-2 text-center no-underline"
-        style={{ textDecoration: "none" }}
-      >
-        <Icon
-          className="h-5 w-5"
-          style={{ color: active ? "#f59e0b" : "#475569" }}
-          strokeWidth={2.2}
-        />
-        <span
-          className="text-[11px] font-medium leading-none"
-          style={{ color: active ? "#b45309" : "#475569" }}
-        >
-          {label}
-        </span>
-      </Link>
+  const existingQuote = useMemo(() => {
+    if (!id) return null;
+    return getQuoteById(id);
+  }, [id]);
+
+  const recentQuotes = useMemo(() => {
+    return getQuotes().slice(0, 5);
+  }, [id]);
+
+  const isEditMode = Boolean(existingQuote);
+
+  const [quoteTitle, setQuoteTitle] = useState("");
+  const [quoteNumber, setQuoteNumber] = useState("001");
+  const [agreedStartDate, setAgreedStartDate] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [scope, setScope] = useState("");
+  const [notes, setNotes] = useState("");
+  const [terms, setTerms] = useState("Payment due within 7 days of acceptance.");
+  const [items, setItems] = useState([createEmptyItem()]);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!existingQuote) return;
+
+    setQuoteTitle(existingQuote.quoteTitle || "");
+    setQuoteNumber(existingQuote.quoteNumber || "001");
+    setAgreedStartDate(existingQuote.agreedStartDate || "");
+    setCustomerName(existingQuote.customerName || "");
+    setCustomerEmail(existingQuote.customerEmail || "");
+    setCustomerPhone(existingQuote.customerPhone || "");
+    setCustomerAddress(existingQuote.customerAddress || "");
+    setScope(existingQuote.scope || "");
+    setNotes(existingQuote.notes || "");
+    setTerms(existingQuote.terms || "Payment due within 7 days of acceptance.");
+    setItems(
+      existingQuote.items && existingQuote.items.length
+        ? existingQuote.items.map((item) => ({
+            description: item.description || "",
+            quantity: item.quantity || 1,
+            unitPrice: item.unitPrice || "",
+          }))
+        : [createEmptyItem()]
     );
+  }, [existingQuote]);
+
+  const totals = useMemo(() => {
+    const subtotal = items.reduce((sum, item) => {
+      const qty = Number(item.quantity) || 0;
+      const unit = Number(item.unitPrice) || 0;
+      return sum + qty * unit;
+    }, 0);
+
+    return {
+      subtotal,
+      total: subtotal,
+    };
+  }, [items]);
+
+  const updateItemField = (index, field, value) => {
+    const updated = [...items];
+    updated[index][field] = value;
+    setItems(updated);
+  };
+
+  const addItem = () => {
+    setItems([...items, createEmptyItem()]);
+  };
+
+  const removeItem = (index) => {
+    if (items.length === 1) return;
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  const resetForm = () => {
+    if (isEditMode && existingQuote) {
+      setQuoteTitle(existingQuote.quoteTitle || "");
+      setQuoteNumber(existingQuote.quoteNumber || "001");
+      setAgreedStartDate(existingQuote.agreedStartDate || "");
+      setCustomerName(existingQuote.customerName || "");
+      setCustomerEmail(existingQuote.customerEmail || "");
+      setCustomerPhone(existingQuote.customerPhone || "");
+      setCustomerAddress(existingQuote.customerAddress || "");
+      setScope(existingQuote.scope || "");
+      setNotes(existingQuote.notes || "");
+      setTerms(existingQuote.terms || "Payment due within 7 days of acceptance.");
+      setItems(
+        existingQuote.items && existingQuote.items.length
+          ? existingQuote.items.map((item) => ({
+              description: item.description || "",
+              quantity: item.quantity || 1,
+              unitPrice: item.unitPrice || "",
+            }))
+          : [createEmptyItem()]
+      );
+      setMessage("");
+      return;
+    }
+
+    setQuoteTitle("");
+    setQuoteNumber("001");
+    setAgreedStartDate("");
+    setCustomerName("");
+    setCustomerEmail("");
+    setCustomerPhone("");
+    setCustomerAddress("");
+    setScope("");
+    setNotes("");
+    setTerms("Payment due within 7 days of acceptance.");
+    setItems([createEmptyItem()]);
+    setMessage("");
+  };
+
+  const validateForm = () => {
+    if (!customerName.trim()) {
+      setMessage("Customer name is required.");
+      return false;
+    }
+
+    if (!quoteTitle.trim()) {
+      setMessage("Quote title is required.");
+      return false;
+    }
+
+    if (!isValidEmail(customerEmail)) {
+      setMessage("Please enter a valid customer email address.");
+      return false;
+    }
+
+    if (!isValidPhone(customerPhone)) {
+      setMessage("Please enter a valid customer phone number.");
+      return false;
+    }
+
+    const validItems = items.filter(
+      (item) => item.description.trim() && (Number(item.quantity) || 0) > 0
+    );
+
+    if (!validItems.length) {
+      setMessage("Add at least one valid line item.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const buildQuotePayload = () => {
+    const validItems = items.filter(
+      (item) => item.description.trim() && (Number(item.quantity) || 0) > 0
+    );
+
+    return {
+      ...(existingQuote || {}),
+      quoteTitle,
+      quoteNumber: quoteNumber.trim() || "001",
+      agreedStartDate,
+      customerName,
+      customerEmail,
+      customerPhone,
+      customerAddress,
+      scope,
+      notes,
+      terms,
+      items: validItems,
+      subtotal: totals.subtotal,
+      total: totals.total,
+      status: "draft",
+    };
+  };
+
+  const handleSave = () => {
+    if (!validateForm()) return;
+
+    const payload = buildQuotePayload();
+
+    if (isEditMode) {
+      updateQuote(payload);
+      navigate(`/truquote/saved/${payload.id}`);
+      return;
+    }
+
+    const saved = saveQuote(payload);
+    navigate(`/truquote/saved/${saved.id}`);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 md:flex">
-      {/* Desktop Sidebar */}
-      <aside
-        className="hidden md:block"
-        style={{
-          width: "270px",
-          borderRight: "1px solid #e5e7eb",
-          padding: "24px 18px",
-          backgroundColor: "#ffffff",
-        }}
-      >
-        <div style={{ marginBottom: "36px" }}>
-          <Link
-            to="/trurate/calculator"
-            style={{ textDecoration: "none", color: "inherit" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-              }}
-            >
-              <img
-                src="/favicon.svg"
-                alt="TruRate logo"
-                style={{
-                  width: "42px",
-                  height: "42px",
-                  objectFit: "contain",
-                  flexShrink: 0,
-                  display: "block",
-                }}
-              />
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize: "22px",
-                  fontWeight: 800,
-                  letterSpacing: "-0.03em",
-                  color: "#0f172a",
-                  lineHeight: 1,
-                  display: "flex",
-                  alignItems: "center",
-                }}
+    <AppShell>
+      <div className="mx-auto max-w-5xl px-4 py-6 md:px-8">
+        <h1 className="text-2xl font-bold tracking-tight">
+          Tru<span className="text-amber-500">Quote</span>
+        </h1>
+        <p className="mt-2 text-sm text-slate-600">
+          {isEditMode
+            ? "Edit your saved quote."
+            : "Create professional quotes and send them to customers."}
+        </p>
+
+        {!isEditMode && (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Recent Quotes</h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Your latest 5 saved quotes
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigate("/truquote/saved")}
+                className="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
               >
-                Tru<span style={{ color: "#f59e0b" }}>Rate</span>
-              </h2>
+                View all
+              </button>
             </div>
-          </Link>
+
+            <div className="mt-4 max-h-72 space-y-3 overflow-y-auto pr-1">
+              {recentQuotes.length === 0 ? (
+                <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">
+                  No saved quotes yet.
+                </div>
+              ) : (
+                recentQuotes.map((quote) => (
+                  <button
+                    key={quote.id}
+                    onClick={() => navigate(`/truquote/saved/${quote.id}`)}
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 shrink-0 text-amber-500" />
+                        <p className="truncate text-sm font-semibold text-slate-900">
+                          {quote.quoteTitle || "Untitled Quote"}
+                        </p>
+                      </div>
+
+                      <p className="mt-1 truncate text-xs text-slate-500">
+                        {quote.customerName || "No customer name"}
+                      </p>
+
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+                        <span>
+                          <strong>No:</strong> {quote.quoteNumber || "001"}
+                        </span>
+                        <span>
+                          <strong>Total:</strong> £{Number(quote.total || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {message && (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
+            {message}
+          </div>
+        )}
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">Quote Details</h2>
+
+            <div className="mt-4 grid gap-4">
+              <input
+                className="rounded-xl border border-slate-300 p-3"
+                placeholder="Quote Title"
+                value={quoteTitle}
+                onChange={(e) => setQuoteTitle(e.target.value)}
+              />
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  className="rounded-xl border border-slate-300 p-3"
+                  placeholder="Quote Number"
+                  value={quoteNumber}
+                  onChange={(e) => setQuoteNumber(e.target.value)}
+                />
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Agreed Start Date
+                  </label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 p-3"
+                    type="date"
+                    value={agreedStartDate}
+                    onChange={(e) => setAgreedStartDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <textarea
+                className="rounded-xl border border-slate-300 p-3"
+                rows="4"
+                placeholder="Scope of works"
+                value={scope}
+                onChange={(e) => setScope(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">Customer Details</h2>
+
+            <div className="mt-4 grid gap-4">
+              <input
+                className="rounded-xl border border-slate-300 p-3"
+                placeholder="Customer Name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+              />
+
+              <div>
+                <input
+                  className={`w-full rounded-xl border p-3 ${
+                    customerEmail && !isValidEmail(customerEmail)
+                      ? "border-red-400"
+                      : "border-slate-300"
+                  }`}
+                  placeholder="Customer Email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                />
+                {customerEmail && !isValidEmail(customerEmail) && (
+                  <p className="mt-1 text-xs text-red-600">
+                    Please enter a valid email address.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <input
+                  className={`w-full rounded-xl border p-3 ${
+                    customerPhone && !isValidPhone(customerPhone)
+                      ? "border-red-400"
+                      : "border-slate-300"
+                  }`}
+                  placeholder="Customer Phone"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                />
+                {customerPhone && !isValidPhone(customerPhone) && (
+                  <p className="mt-1 text-xs text-red-600">
+                    Please enter a valid phone number.
+                  </p>
+                )}
+              </div>
+
+              <textarea
+                className="rounded-xl border border-slate-300 p-3"
+                rows="3"
+                placeholder="Customer Address"
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-          <div>
-            <p style={sectionLabelStyle}>TruRate</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <Link to="/trurate/calculator" style={getDesktopLinkStyle("/trurate/calculator")}>
-                Home
-              </Link>
-              <Link to="/trurate/history" style={getDesktopLinkStyle("/trurate/history")}>
-                History
-              </Link>
-              <Link to="/trurate/insights" style={getDesktopLinkStyle("/trurate/insights")}>
-                Insights
-              </Link>
-            </div>
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Line Items</h2>
+            <button
+              onClick={addItem}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+            >
+              Add Item
+            </button>
           </div>
 
-          <div>
-            <p style={sectionLabelStyle}>TruQuote</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <Link to="/truquote" style={getDesktopLinkStyle("/truquote")}>
-                Quotes
-              </Link>
-            </div>
+          <div className="mt-4 space-y-4">
+            {items.map((item, index) => (
+              <div key={index} className="grid gap-3 md:grid-cols-12">
+                <input
+                  className="rounded-xl border border-slate-300 p-3 md:col-span-6"
+                  placeholder="Description"
+                  value={item.description}
+                  onChange={(e) => updateItemField(index, "description", e.target.value)}
+                />
+
+                <input
+                  className="rounded-xl border border-slate-300 p-3 md:col-span-2"
+                  type="number"
+                  min="1"
+                  placeholder="Qty"
+                  value={item.quantity}
+                  onChange={(e) => updateItemField(index, "quantity", e.target.value)}
+                />
+
+                <div className="relative md:col-span-3">
+                  <PoundSterling className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    className="w-full rounded-xl border border-slate-300 py-3 pl-10 pr-3"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={item.unitPrice}
+                    onChange={(e) => updateItemField(index, "unitPrice", e.target.value)}
+                  />
+                </div>
+
+                <button
+                  onClick={() => removeItem(index)}
+                  className="rounded-xl border border-red-200 px-3 py-2 text-sm text-red-600 md:col-span-1"
+                >
+                  X
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">Notes</h2>
+            <textarea
+              className="mt-4 w-full rounded-xl border border-slate-300 p-3"
+              rows="4"
+              placeholder="Additional notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+
+            <h2 className="mt-6 text-lg font-semibold">Terms</h2>
+            <textarea
+              className="mt-4 w-full rounded-xl border border-slate-300 p-3"
+              rows="4"
+              placeholder="Terms and payment details"
+              value={terms}
+              onChange={(e) => setTerms(e.target.value)}
+            />
           </div>
 
-          <div>
-            <p style={sectionLabelStyle}>TruInvoice</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <Link to="/truinvoice" style={getDesktopLinkStyle("/truinvoice")}>
-                Invoices
-              </Link>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold">Summary</h2>
+
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>£{totals.subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-lg font-bold">
+                <span>Total</span>
+                <span>£{totals.total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3">
+              <button
+                onClick={handleSave}
+                className="rounded-xl bg-slate-900 px-4 py-3 font-medium text-white"
+              >
+                {isEditMode ? "Update Quote" : "Save Quote"}
+              </button>
+
+              <button
+                onClick={resetForm}
+                className="rounded-xl border border-slate-300 px-4 py-3 font-medium text-slate-900"
+              >
+                Reset
+              </button>
             </div>
           </div>
         </div>
-      </aside>
-
-      {/* Main content */}
-      <main className="min-w-0 flex-1 bg-slate-50 pb-24 md:pb-0">
-        {children}
-      </main>
-
-      {/* Mobile top brand bar */}
-      <div className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-3 md:hidden">
-        <Link
-          to="/trurate/calculator"
-          className="flex items-center gap-2 no-underline"
-          style={{ textDecoration: "none" }}
-        >
-          <img
-            src="/favicon.svg"
-            alt="TruRate logo"
-            className="h-8 w-8 object-contain"
-          />
-          <span className="text-xl font-extrabold tracking-tight text-slate-900">
-            Tru<span className="text-amber-500">Rate</span>
-          </span>
-        </Link>
       </div>
-
-      {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white md:hidden">
-        <div className="mx-auto flex max-w-xl items-stretch">
-          {mobileNavItem("/trurate/calculator", "Home", Calculator)}
-          {mobileNavItem("/trurate/history", "History", History)}
-          {mobileNavItem("/trurate/insights", "Insights", BarChart3)}
-          {mobileNavItem("/truquote", "Quotes", FileText)}
-          {mobileNavItem("/truinvoice", "Invoices", PoundSterling)}
-        </div>
-      </nav>
-    </div>
+    </AppShell>
   );
 }
