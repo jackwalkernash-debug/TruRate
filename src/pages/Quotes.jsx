@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { PoundSterling } from "lucide-react";
+import { PoundSterling, FileText, ChevronRight } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import AppShell from "../components/AppShell";
-import { getQuoteById, saveQuote, updateQuote } from "../lib/quotes";
+import { getQuoteById, getQuotes, saveQuote, updateQuote } from "../lib/quotes";
 
 function createEmptyItem() {
   return {
@@ -45,6 +45,10 @@ export default function Quotes() {
   const [terms, setTerms] = useState("Payment due within 7 days of acceptance.");
   const [items, setItems] = useState([createEmptyItem()]);
   const [message, setMessage] = useState("");
+
+  const recentQuotes = useMemo(() => {
+    return getQuotes().slice(0, 5);
+  }, [id]);
 
   useEffect(() => {
     if (!existingQuote) return;
@@ -220,6 +224,66 @@ export default function Quotes() {
             ? "Edit your saved quote."
             : "Create professional quotes and send them to customers."}
         </p>
+
+        {!isEditMode && (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Recent Quotes</h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Your latest saved quotes for quick access
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigate("/truquote/saved")}
+                className="shrink-0 rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700"
+              >
+                View all
+              </button>
+            </div>
+
+            <div className="mt-4 max-h-72 space-y-3 overflow-y-auto pr-1">
+              {recentQuotes.length === 0 ? (
+                <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">
+                  No saved quotes yet.
+                </div>
+              ) : (
+                recentQuotes.map((quote) => (
+                  <button
+                    key={quote.id}
+                    onClick={() => navigate(`/truquote/saved/${quote.id}`)}
+                    className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 shrink-0 text-amber-500" />
+                        <p className="truncate text-sm font-semibold text-slate-900">
+                          {quote.quoteTitle || "Untitled Quote"}
+                        </p>
+                      </div>
+
+                      <p className="mt-1 truncate text-xs text-slate-500">
+                        {quote.customerName || "No customer name"}
+                      </p>
+
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-600">
+                        <span>
+                          <strong>No:</strong> {quote.quoteNumber || "001"}
+                        </span>
+                        <span>
+                          <strong>Total:</strong> £{Number(quote.total || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
 
         {message && (
           <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
